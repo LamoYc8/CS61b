@@ -10,7 +10,8 @@ in terms of an already solved problem (Disjoint Sets, a.k.a Union Find).
 public class Percolation {
     private boolean[][] underground;
     private int openSiteN;
-    private WeightedQuickUnionUF wquuf; //Instance class
+    private WeightedQuickUnionUF wquuf; //Instance class of WQUF class
+    private WeightedQuickUnionUF nobackWash; //Aim to solve backwash problem
     private int grid;
 
     //Using virtual site to speed up percolation and isFull operations
@@ -18,15 +19,6 @@ public class Percolation {
     private int topVirtual;
     private int bottomVirtual;
 
-
-    /*
-       Coding mistakes: 转换算法仔细检查
-       Index starts from 0 to N * N -1;
-       Idea comes from HW2 slides
-     */
-    private int xyTo1D(int row, int col) {
-        return underground.length * row + col;
-    }
 
     // create N-by-N grid, with all sites initially blocked
     public Percolation(int N) {
@@ -46,11 +38,22 @@ public class Percolation {
 
         //Math.pow(base, exponent)
         wquuf = new WeightedQuickUnionUF((int) Math.pow(N, 2) + 2);
+        nobackWash = new WeightedQuickUnionUF((int) Math.pow(N, 2) + 1);
 
         topVirtual = (int) Math.pow(N, 2);
         bottomVirtual = topVirtual + 1;
 
     }
+
+    /*
+       Coding mistakes: 转换算法仔细检查
+       Index starts from 0 to N * N -1;
+       Idea comes from HW2 slides
+     */
+    private int xyTo1D(int row, int col) {
+        return underground.length * row + col;
+    }
+
 
     // open the site (row, col) if it is not open already
     public void open(int row, int col) {
@@ -66,13 +69,14 @@ public class Percolation {
 
         checkAndUnion(row, col);
 
-        if (row == 0)
+        if (row == 0) {
             wquuf.union(xyTo1D(row, col), topVirtual);
+            nobackWash.union(xyTo1D(row, col), topVirtual);
+        }
 
-        //TODO backwash problem to be solved
+
         if (row == grid - 1)
-            if ((!percolates()) && isFull(row, col))
-                wquuf.union(xyTo1D(row, col), bottomVirtual);
+            wquuf.union(xyTo1D(row, col), bottomVirtual);
 
 
         //Avoid backwash issue
@@ -141,8 +145,10 @@ public class Percolation {
             for (int j = col - 1; j <= col + 1; j++) {
                 if (tPointD(row, col, i, j) == 1) {
                     if ((0 <= i) && (i <= grid - 1) && (0 <= j) && (j <= grid - 1))
-                        if (isOpen(i, j))
+                        if (isOpen(i, j)) {
                             wquuf.union(xyTo1D(row, col), xyTo1D(i, j));
+                            nobackWash.union(xyTo1D(row, col), xyTo1D(i, j));
+                        }
                 }
             }
         }
@@ -173,7 +179,7 @@ public class Percolation {
             throw new ArrayIndexOutOfBoundsException("Bad inputs");
 
         //check isOpen at first, otherwise isFull makes no sense here
-        if (isOpen(row, col) && wquuf.connected(xyTo1D(row, col), topVirtual)) {
+        if (isOpen(row, col) && nobackWash.connected(xyTo1D(row, col), topVirtual)) {
             return true;
 
             //Using virtual top site to speed up this operation into constant time rather than linear time
